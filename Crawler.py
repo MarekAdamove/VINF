@@ -11,32 +11,44 @@ class Crawler:
         self.unvisited_urls = [starting_url]
         self.num_pages_to_download = num_pages_to_download
         self.used_titles = []
+        self.counter = 0
 
         self.crawl()
     def download_url(self, url):
         return requests.get(url)
+
+    def get_main_title(self, document):
+        main_title = re.search(r"<span\s+class\s*=\s*[\"\']mw-page-title-main[\"\']>([^<>]+)</span>", document, flags=re.I | re.M | re.DOTALL)
+
+        if main_title is None:
+            main_title = re.search(r"<h1\s+[^>)]*id=[\"\']firstHeading[\"\'][^>]*>(.*)<\/h1>", document, flags=re.I | re.M | re.DOTALL).groups()[0]
+            main_title = re.sub(r"<.*?>", main_title,flags=re.I | re.M | re.DOTALL)
+            return main_title
+
+        return main_title.groups()[0]
 
     def save_html(self, page):
         page_title_tag = re.search("<title.*>.*</title>", page.text, flags= re.IGNORECASE | re.MULTILINE)
         page_title = re.sub("<.*?>", "", page_title_tag.group())
         page_title = re.sub(r'[/*?:"<>|]', "", page_title)
 
-        self.used_titles.append(page_title)
+        # if page_title not in self.used_titles:
+        #     self.used_titles.append(page_title)
+        # else:
+        #     self.used_titles.append(page_title)
+        #     page_title += f"{self.used_titles.count(page_title)}"
 
-        if page_title in self.used_titles:
-            page_title += f"{self.used_titles.count(page_title)+1}"
+        with open(f"{self.SAVE_HTML_PATH}/{page_title}_{self.counter}.html", "w", encoding="utf-8") as file:
+            file.write(page.text)
+            file.close()
 
-        with open(f"{self.SAVE_HTML_PATH}/{page_title}.html", "w", encoding="utf-8") as file:
-            if file is None:
-                print("Error")
-            else:
-                file.write(page.text)
+        self.counter += 1
 
     def find_links(self, page):
-        link_pattern = r"<a\s+href\s*=\s*[\"\'](/[^\.\"\']+)[\"\'].*>.*</a>"
+        #link_pattern = r"<a\s+href\s*=\s*[\"\'](/[^\.\"\']+)[\"\'].*>.*</a>"
+        link_pattern = r"<a\s+href\s*=\s*[\"\'](/wiki/(?!(?:Forum:|User:|File:|Special:))[^\"\']+).*>.*</a>"
 
         return re.findall(link_pattern, page.text, flags= re.IGNORECASE | re.MULTILINE)
-
 
     def crawl(self):
         for relative_link in self.unvisited_urls:
@@ -58,4 +70,4 @@ class Crawler:
 
 
 
-crawler = Crawler("/wiki/World_of_Warcraft:_Dragonflight", 5000,"https://wowpedia.fandom.com")
+crawler = Crawler("/wiki/World_of_Warcraft:_Dragonflight", 13000,"https://warcraft.wiki.gg")
